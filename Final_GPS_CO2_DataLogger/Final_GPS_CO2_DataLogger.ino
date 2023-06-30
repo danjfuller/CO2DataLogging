@@ -10,7 +10,7 @@
 #include <SD.h>
 // by Adafruit. Must be manually installed
 #include "RTClib.h"
-#include <SoftwareSerial.h>
+//#include <SoftwareSerial.h>
 #include <Adafruit_GPS.h>
 // GPS STUFF
 //TX is 7, RX is 6
@@ -30,8 +30,8 @@ char filename[24];
 //------------------------------------
 RTC_DS1307 rtc;
 //float data;
-int i = 0;
-int N = 50; // Number of samples per file
+//int i = 0;
+//int N = 50; // Number of samples per file
 //int waittime_ms = 500; // milliseconds between samples
 // ====================================================
 void setup()
@@ -44,7 +44,7 @@ void setup()
   // explicit date & time, for example:
   // to set January 21, 2014 at 3:18pm
   // you would use the following line:
-  //rtc.adjust(DateTime(2023, 5, 31, 16, 9, 0));
+  //rtc.adjust(DateTime(2023, 6, 29, 19, 6, 0));
     
   //open_next_logfile();
   // GPS STUFF
@@ -71,24 +71,27 @@ void setup()
   dataFile.close();
 }
 // ==================================================
-int timer = millis();
+uint32_t timer = millis();
 void loop ()
 {
-    if (millis() - timer > 500)
-    {
-      timer = millis();
+  if (GPS.newNMEAreceived()) {
+    // a tricky thing here is if we print the NMEA sentence, or data
+    // we end up not listening and catching other sentences!
+    // so be very wary if using OUTPUT_ALLDATA and trying to print out data
+    Serial2.print(GPS.lastNMEA()); // this also sets the newNMEAreceived() flag to false
+    if (!GPS.parse(GPS.lastNMEA())) // this also sets the newNMEAreceived() flag to false
+      return; // we can fail to parse a sentence in which case we should just wait for another
+  }
+  if(millis()- timer > 500) // print every half second
+  {      
+     timer = millis();
      File logfile = SD.open("CO2DATA.TXT", FILE_WRITE);
      String fullData = String("Day " + String(rtc.now().day()) + "- " + rtc.now().hour()) + ":" + String(rtc.now().minute()) + ":" +
           String(rtc.now().second()) + "," + String(CO2Read()) + ", " + String(GPS.latitude) +" N,"+ String(GPS.longitude) +"W, altitude:"+ String(GPS.altitude);
      logfile.println(fullData);
+     Serial.print("Sats: " + String(GPS.satellites) + " -- ");
      Serial.println(fullData);
      logfile.close();
-    i++;
-    }
-  // Reached N samples, open the next log file
-  else {
-    // change log file name here, if desired.
-    i = 0;
   }
 }
 
